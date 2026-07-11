@@ -1,0 +1,18 @@
+Microphone
+      │
+      ▼
+Silero VAD
+      │
+      ▼
+Porcupine
+      │
+Wake word detected?
+      │
+      ▼
+Faster-Whisper
+      │
+      ▼
+Intent Parser
+      │
+      ▼
+Action Executor

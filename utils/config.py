@@ -1,59 +1,111 @@
 """
-utils/config.py
-Loads settings from config.json at the project root, so you can tweak
-the wake word, timeouts, and TTS voice settings WITHOUT touching code.
+config.py
 
-If config.json is missing, this creates one with sensible defaults
-automatically the first time you run the assistant.
+Loads settings from config.json at the project root and exposes them
+through a shared dictionary named `config`.
+
+Features:
+- Automatically creates config.json with sensible defaults if missing.
+- Handles malformed JSON gracefully.
+- Merges missing keys with defaults so older config files still work.
+- Uses an absolute path, so it works no matter where Python is launched from.
+
+Usage:
+    from config import config
+
+Example:
+    wake_word = config["wake_word"]
 """
 
 import json
 import os
 
+# -------------------------------------------------------------------
+# Default configuration
+# -------------------------------------------------------------------
 DEFAULT_CONFIG = {
     "wake_word": "rakesh",
     "listen_timeout": 8,
     "confirm_timeout": 6,
+
+    "tts_engine": "pyttsx3",
+    "piper_model_path": "models/en_GB-alan-medium.onnx",
+
     "tts_rate": 175,
     "tts_volume": 1.0,
 }
 
-# utils/config.py -> go up one folder to reach the project root
+# -------------------------------------------------------------------
+# Path to config.json (project root)
+# -------------------------------------------------------------------
+
 CONFIG_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    os.path.dirname(os.path.abspath(__file__)),
     "config.json",
 )
 
-
-def _load():
-    if not os.path.exists(CONFIG_PATH):
-        _save(DEFAULT_CONFIG)
-        return DEFAULT_CONFIG.copy()
-
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        try:
-            data = json.load(f)
-        except json.JSONDecodeError:
-            print("Warning: config.json is malformed, using defaults.")
-            data = {}
-
-    # Merge with defaults so a missing key never crashes the app —
-    # e.g. if you add a new setting later but forget to update old configs.
-    merged = DEFAULT_CONFIG.copy()
-    merged.update(data)
-    return merged
+# -------------------------------------------------------------------
+# Save configuration
+# -------------------------------------------------------------------
 
 
 def _save(data):
+    """Write configuration to config.json."""
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 
 
-# Loaded once at import time and shared everywhere via `from utils.config import config`
+# -------------------------------------------------------------------
+# Load configuration
+# -------------------------------------------------------------------
+
+
+def _load():
+    """
+    Load config.json.
+
+    If the file doesn't exist, create it using DEFAULT_CONFIG.
+    Missing keys are automatically filled from DEFAULT_CONFIG.
+    """
+
+    if not os.path.exists(CONFIG_PATH):
+        _save(DEFAULT_CONFIG)
+        return DEFAULT_CONFIG.copy()
+
+    try:
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+    except json.JSONDecodeError:
+        print("Warning: config.json is malformed. Using default configuration.")
+        data = {}
+
+    except Exception as e:
+        print(f"Error reading config.json: {e}")
+        data = {}
+
+    # Merge existing config with defaults
+    merged = DEFAULT_CONFIG.copy()
+    merged.update(data)
+
+    # Save merged config back if new keys were added
+    if merged != data:
+        _save(merged)
+
+    return merged
+
+
+# -------------------------------------------------------------------
+# Shared configuration dictionary
+# -------------------------------------------------------------------
+
 config = _load()
 
+# -------------------------------------------------------------------
+# Debug
+# -------------------------------------------------------------------
 
 if __name__ == "__main__":
-    print("Loaded config:")
+    print("Configuration loaded successfully.\n")
     print(json.dumps(config, indent=2))
-    print(f"\nReading from: {CONFIG_PATH}")
+    print(f"\nConfig file location:\n{CONFIG_PATH}")

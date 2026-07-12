@@ -1,23 +1,39 @@
+# ==========================================================
+# Voice Assistant Requirements
+# ==========================================================
+
+# ----------------------------
+# Speech Recognition (Current)
+# ----------------------------
 SpeechRecognition==3.10.4
+PyAudio==0.2.14
+
+# ----------------------------
+# Text-to-Speech
+# ----------------------------
 pyttsx3==2.90
-pyaudio==0.2.14
+piper-tts==1.4.2
+
+# ----------------------------
+# Offline Speech Recognition
+# ----------------------------
+faster-whisper==1.0.3
+silero-vad
+torch==2.3.1
+onnxruntime
+
+# ----------------------------
+# Audio Processing
+# ----------------------------
+sounddevice
+soundfile
+numpy
+
+# ----------------------------
+# Utilities
+# ----------------------------
 fuzzywuzzy==0.18.0
 python-Levenshtein==0.25.1
-send2trash==1.8.3
+Send2Trash==1.8.3
 pywin32==306
-
-# for speaker.py used pyyttsx3 and piper-tts
-piper-tts==1.4.2
-sounddevice
-numpy
-onnxruntime
 pathvalidate
-
-# --- New additions for llm level work ---
-# faster-whisper==1.0.3
-# pvporcupine==3.0.2
-# torch==2.3.1
-# torchaudio==2.3.1
-# piper-tts==1.2.0
-# requests==2.32.3
-

@@ -5,5 +5,5 @@
   "tts_rate": 175,
   "tts_volume": 1.0,
   "tts_engine": "piper",
-  "piper_model_path": "models/en_GB-alan-medium.onnx"
+  "piper_model_path": "models/en_US-amy-medium.onnx"
 }

@@ -63,8 +63,8 @@ TIMEOUT = CONFIG.get("listen_timeout_seconds", 8)
 SAMPLE_RATE = CONFIG.get("sample_rate", 16000)
 MICROPHONE_INDEX = CONFIG.get("microphone_index", 1)
 CHUNK_SAMPLES = 512  # 32ms @ 16kHz — required window size for silero-vad
-VAD_THRESHOLD = CONFIG.get("vad_threshold", 0.5)
-SILENCE_DURATION_SECONDS = CONFIG.get("silence_duration_seconds", 0.8)
+VAD_THRESHOLD = CONFIG.get("vad_threshold", 0.7)
+SILENCE_DURATION_SECONDS = CONFIG.get("silence_duration_seconds", 0.5)
 MAX_RECORD_SECONDS = CONFIG.get("max_recording_seconds", 15)
 PREROLL_SECONDS = CONFIG.get("preroll_seconds", 0.3)
 SPEECH_CONFIRM_CHUNKS = CONFIG.get("speech_confirm_chunks", 2)
@@ -86,7 +86,13 @@ _DEFAULT_ALIASES = [
     "rakesh",
     "rakeshh",
     "rakish",
-    "raki",
+    "rakesh",
+    "rakish",
+    "rakes",
+    "rakes",
+    "rakesh",
+    "rakeesh",
+    "rake",
 ]
 WAKE_WORD_ALIASES = [a.lower() for a in CONFIG.get("wake_word_aliases", _DEFAULT_ALIASES)]
 if WAKE_WORD not in WAKE_WORD_ALIASES:
@@ -324,7 +330,7 @@ def listen_once(timeout=None, verbose=True, return_audio=False):
     return (text, audio) if return_audio else text
 
 
-def wait_for_wake_word(poll_timeout=3, verbose=True):
+def wait_for_wake_word(poll_timeout=1.5, verbose=True):
     """
     Blocks (thread-safe — fine to run in a background thread) until the
     wake word or one of its aliases is heard. Returns True once detected.

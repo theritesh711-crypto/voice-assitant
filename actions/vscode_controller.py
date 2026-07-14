@@ -13,6 +13,27 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from utils.logger import log_action
 
 
+def open_vscode():
+    """
+    Opens the Visual Studio Code application.
+    Requires the 'code' command to be available in PATH.
+    """
+    try:
+        subprocess.run(["code"], shell=True, check=True)
+        log_action("Opened VS Code.")
+        return True
+
+    except FileNotFoundError:
+        log_action(
+            "ERROR: 'code' command not found. Make sure the VS Code CLI is installed and added to PATH."
+        )
+        return False
+
+    except subprocess.CalledProcessError as e:
+        log_action(f"ERROR opening VS Code: {e}")
+        return False
+
+
 def open_in_vscode(path: str):
     """
     Opens a folder or file in VS Code.

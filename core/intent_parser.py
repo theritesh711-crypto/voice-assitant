@@ -1,13 +1,133 @@
 """
 intent_parser.py
 Takes raw spoken text and figures out WHAT action the user wants
-and WHAT the target (file/folder name) is, using pattern matching.
+and WHAT the target (file/folder name) is.
 
-This is intentionally simple (regex/keywords) for v1 — reliable and free.
-Can be upgraded later to a local LLM (Ollama) for more natural phrasing.
+Two-stage pipeline:
+  1. Fast path: regex/keyword matching (instant, free, no dependencies).
+  2. Fallback: if the fast path can't confidently classify the command,
+     it's handed to a local Ollama model, which returns the same JSON
+     shape. This stays fully offline — Ollama serves the model on
+     localhost, nothing leaves the machine.
+
+If Ollama isn't installed/running, or the model call fails/times out
+for any reason, we quietly fall back to {"intent": "unknown", ...} —
+exactly the old behavior — so a missing Ollama install never breaks
+the assistant.
 """
 
+import json
 import re
+
+import requests
+
+# ---------------------------------------------------
+# Ollama fallback settings
+# ---------------------------------------------------
+OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_MODEL = "llama3.2"          # change to whatever model you've pulled
+OLLAMA_TIMEOUT_SECONDS = 30      # don't let a slow/offline Ollama hang the assistant
+
+# Keep this in lockstep with the intents handle_command() in main.py knows
+# how to act on — the LLM is instructed to only ever pick from this list.
+VALID_INTENTS = [
+    "open_in_vscode",
+    "open_vscode",
+    "close_vscode",
+    "delete",
+    "move",
+    "create_file",
+    "create_folder",
+    "sleep",
+    "wake",
+    "undo",
+    "shutdown",
+    "unknown",
+]
+
+OLLAMA_SYSTEM_PROMPT = """You are a strict command classifier for a Windows voice assistant.
+
+Given one spoken sentence, output ONLY a single-line JSON object (no markdown
+fences, no explanation, no extra text) with this exact shape:
+
+{"intent": "<one of the allowed intents>", "target": <string or null>, "location": <string or null>, "destination": <string or null>}
+
+Allowed intents (pick exactly one):
+- open_in_vscode   -> target = file/folder name to open
+- open_vscode      -> no target, just opens the VS Code app
+- close_vscode     -> no fields
+- delete           -> target = file/folder name, location = containing folder name or null
+- move             -> target = file/folder name, destination = folder name to move it into
+- create_file      -> target = file name, location = containing folder name or null
+- create_folder    -> target = folder name, location = containing folder name or null
+- sleep            -> no fields (user wants the assistant to stop listening)
+- wake             -> no fields (user wants the assistant to resume listening)
+- undo             -> no fields
+- shutdown         -> no fields (user wants to quit the assistant entirely)
+- unknown          -> use this if the sentence genuinely doesn't match any of the above
+
+Rules:
+- Only use fields relevant to the chosen intent; set the rest to null.
+- Never invent a target/location/destination that wasn't said or clearly implied.
+- Output raw JSON only. No ```json fences. No commentary.
+"""
+
+
+def _parse_with_ollama(text: str) -> dict:
+    """
+    Fallback classifier. Sends the raw text to a local Ollama model and
+    parses its JSON reply into the same dict shape parse_command()
+    normally returns.
+
+    Returns {"intent": "unknown", "raw_text": text} if Ollama is
+    unreachable, times out, or replies with something unparsable —
+    callers never need to special-case this function failing.
+    """
+    prompt = f"{OLLAMA_SYSTEM_PROMPT}\nSentence: \"{text}\"\nJSON:"
+
+    try:
+        response = requests.post(
+            OLLAMA_URL,
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "options": {"temperature": 0},
+            },
+            timeout=OLLAMA_TIMEOUT_SECONDS,
+        )
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"DEBUG - Ollama fallback unavailable ({e}); treating as unknown.")
+        return {"intent": "unknown", "raw_text": text}
+
+    raw_reply = response.json().get("response", "").strip()
+
+    # Models sometimes wrap JSON in ```json ... ``` even when told not to —
+    # strip that defensively before parsing.
+    cleaned = re.sub(r"^```(?:json)?|```$", "", raw_reply, flags=re.MULTILINE).strip()
+
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError:
+        print(f"DEBUG - Ollama returned unparsable JSON: {raw_reply!r}")
+        return {"intent": "unknown", "raw_text": text}
+
+    intent = parsed.get("intent")
+    if intent not in VALID_INTENTS:
+        print(f"DEBUG - Ollama returned an unrecognized intent: {intent!r}")
+        return {"intent": "unknown", "raw_text": text}
+
+    # Trim null/empty fields so the returned dict matches the shape the
+    # regex path produces (no stray None-valued keys for simple intents).
+    result = {"intent": intent}
+    for field in ("target", "location", "destination"):
+        value = parsed.get(field)
+        if value:
+            result[field] = value
+
+    print(f"DEBUG - Ollama fallback classified '{text}' -> {result}")
+    return result
 
 
 def parse_command(text: str) -> dict:
@@ -24,6 +144,10 @@ def parse_command(text: str) -> dict:
       {"intent": "undo"}
       {"intent": "shutdown"}
       {"intent": "unknown"}
+
+    Tries fast regex/keyword matching first. Only if that can't classify
+    the sentence does it fall back to a local Ollama model (see
+    _parse_with_ollama above).
     """
     text = text.lower().strip()
 
@@ -145,7 +269,8 @@ def parse_command(text: str) -> dict:
         target = match.group(1).strip()
         return {"intent": "create_file", "target": target, "location": None}
 
-    return {"intent": "unknown", "raw_text": text}
+    # --- FALLBACK: regex couldn't classify it, try the local LLM ---
+    return _parse_with_ollama(text)
 
 
 if __name__ == "__main__":
@@ -184,6 +309,10 @@ if __name__ == "__main__":
         "vs code",
         "vscode",
         "code",
+        # These are phrased naturally enough that the regex fast-path
+        # should miss them and fall through to the Ollama fallback:
+        "get rid of the notes file",
+        "bring up the api folder in the editor",
     ]
 
     print("Testing intent_parser.py against sample commands:\n")
@@ -195,5 +324,7 @@ if __name__ == "__main__":
 
     print(
         "Check above: every command except 'make me a sandwich' should "
-        "show a real intent (not 'unknown')."
+        "show a real intent (not 'unknown'). The last two rely on the "
+        "Ollama fallback — if Ollama isn't running, they'll show "
+        "'unknown' instead, which is expected/safe."
     )

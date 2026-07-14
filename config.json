@@ -2,6 +2,7 @@
   "wake_word": "rakesh",
   "listen_timeout": 8,
   "confirm_timeout": 6,
+  "microphone_index": 1,
 
   "tts_engine": "piper",
   "piper_model_path": "models/en_GB-alan-medium.onnx",

@@ -77,23 +77,66 @@ PREROLL_CHUNKS = max(1, int((PREROLL_SECONDS * SAMPLE_RATE) / CHUNK_SAMPLES))
 SILENCE_CHUNKS_NEEDED = max(1, int((SILENCE_DURATION_SECONDS * SAMPLE_RATE) / CHUNK_SAMPLES))
 MAX_RECORD_CHUNKS = max(1, int((MAX_RECORD_SECONDS * SAMPLE_RATE) / CHUNK_SAMPLES))
 
-# Wake-word aliases (Whisper may mishear "Rakesh" in various ways)
+# Wake-word aliases (Whisper may mishear "Lily" in various ways)
 _DEFAULT_ALIASES = [
     WAKE_WORD,
     f"hey {WAKE_WORD}",
     f"hi {WAKE_WORD}",
     f"{WAKE_WORD} sir",
-    "rakesh",
-    "rakeshh",
-    "rakish",
-    "rakesh",
-    "rakish",
-    "rakes",
-    "rakes",
-    "rakesh",
-    "rakeesh",
-    "rake",
+
+    "lily",
+    "lilly",
+    "lilli",
+    "lili",
+    "lilie",
+    "lilie",
+    "lilli",
+    "lilyy",
+    "lilyyy",
+    "lilii",
+    "liliii",
+    "lilee",
+    "lilee",
+    "lilie",
+    "leely",
+    "leeli",
+    "leelie",
+    "leelyy",
+    "liliya",
+    "lillie",
+    "lilly",
+    "liley",
+    "lilliy",
+    "liliey",
+    "liley",
+    "liliy",
+    "lillyy",
+    "lilye",
+    "liliee",
+    "lileeh",
+    "leely",
+    "leelee",
+    "leelee",
+    "lilliie",
+    "lillii",
+    "lilyy",
+    "liliy",
+    "lileeey",
+    "liliyy",
+    "lillly",
+    "lileee",
+    "lile",
+    "lileea",
+    "lileah",
+    "lileeh",
+    "lilliiee",
+    "lilieee",
+    "lilliii",
+    "liliiii",
+    "lileeey",
+    "lillyyy",
 ]
+
 WAKE_WORD_ALIASES = [a.lower() for a in CONFIG.get("wake_word_aliases", _DEFAULT_ALIASES)]
 if WAKE_WORD not in WAKE_WORD_ALIASES:
     WAKE_WORD_ALIASES.append(WAKE_WORD)
@@ -360,7 +403,7 @@ if __name__ == "__main__":
     result = listen_once(timeout=8)
     print("You said:", result)
 
-    print("\nSTEP 2 - Testing wake word (say 'Rakesh')")
+    print("\nSTEP 2 - Testing wake word (say 'lily')")
     wait_for_wake_word()
 
     print("SUCCESS")

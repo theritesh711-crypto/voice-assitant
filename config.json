@@ -1,5 +1,5 @@
 {
-  "wake_word": "rakesh",
+  "wake_word": "lily",
   "listen_timeout": 8,
   "confirm_timeout": 6,
   "microphone_index": 1,
